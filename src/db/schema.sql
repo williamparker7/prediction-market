@@ -56,3 +56,14 @@ CREATE TABLE price_snapshots (
     ON DELETE RESTRICT
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE ingestion_runs (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  started_at      DATETIME     NOT NULL,
+  finished_at     DATETIME     NULL,
+  markets_fetched INT          NOT NULL DEFAULT 0,
+  markets_written INT          NOT NULL DEFAULT 0,
+  error_count     INT          NOT NULL DEFAULT 0,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
