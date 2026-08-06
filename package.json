@@ -7,7 +7,8 @@
     "check-db": "tsx --env-file=.env src/scripts/check-db.ts",
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "explore": "tsx --env-file=.env src/scripts/polymarketAPITest.ts"
+    "explore": "tsx --env-file=.env src/scripts/polymarketAPITest.ts",
+    "ingest": "tsx --env-file=.env src/ingestion/ingest.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +20,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "mysql2": "^3.23.2"
   }
 }
