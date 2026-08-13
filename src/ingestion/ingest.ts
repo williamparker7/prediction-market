@@ -3,13 +3,25 @@ import { parseMarket } from "./parseMarket.js";
 import { upsertEvent, upsertMarket, insertSnapshot } from "./writers.js";
 import type { Event } from "../types/market.js";
 
+function parseLimit(args: string[]): number {
+  const limitIndex = args.indexOf("--limit");
+  if (limitIndex === -1) return 100;
+
+  const value = args[limitIndex + 1];
+  if (value === undefined || !/^[1-9]\d*$/.test(value)) {
+    throw new Error("--limit must be followed by a positive integer");
+  }
+  return Number(value);
+}
+
 async function ingest(): Promise<void> {
+  const limit = parseLimit(process.argv.slice(2));
   // One timestamp for the whole run — every snapshot from this run shares it.
   // This is the coordinated-snapshot design: "all markets, as of this instant."
   const capturedAt = new Date().toISOString();
 
   // 1. Fetch a page of live markets.
-  const raw = await fetchMarkets(100);
+  const raw = await fetchMarkets(limit);
   console.log(`fetched ${raw.length} markets`);
 
   // 2. Parse all of them.
