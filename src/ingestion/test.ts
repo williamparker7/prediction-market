@@ -2,23 +2,49 @@ import "dotenv/config";
 
 import { fetchMarkets } from "./fetchMarkets.js";
 import { parseMarket } from "./parseMarket.js";
-import { insertSnapshot, upsertEvent, upsertMarket } from "./writers.js";
+import {
+  createIngestionRun,
+  failIngestionRun,
+  insertSnapshot,
+  recordMarketsFetched,
+  succeedIngestionRun,
+  upsertEvent,
+  upsertMarket,
+} from "./writers.js";
 
+async function run(): Promise<void> {
+  const requestedLimit = 20;
+  const runId = await createIngestionRun(requestedLimit, new Date().toISOString());
+  let snapshotsWritten = 0;
 
-async function run() {
-  const raw = await fetchMarkets(20);
-  for (const m of raw) {
-    const p = parseMarket(m);
-    await upsertEvent(p.event);
-    await upsertMarket(p.market);        // must come after the event (FK order)
-    await insertSnapshot({ ...p.snapshot, capturedAt: new Date().toISOString() });
-    console.log("wrote one market — check DBeaver");    
-    const sum = (p.snapshot.yesPrice ?? 0) + (p.snapshot.noPrice ?? 0);
-    console.log(
-      `${p.market.id} | yes=${p.snapshot.yesPrice} no=${p.snapshot.noPrice} ` +
-      `sum=${sum.toFixed(4)} bid=${p.snapshot.bestBid} grp=${p.market.groupItemTitle}`,
+  try {
+    const raw = await fetchMarkets(requestedLimit);
+    const capturedAt = new Date().toISOString();
+    await recordMarketsFetched(runId, raw.length);
+
+    for (const item of raw) {
+      const parsed = parseMarket(item);
+      await upsertEvent(parsed.event);
+      await upsertMarket(parsed.market);
+      await insertSnapshot({ ...parsed.snapshot, runId, capturedAt });
+      snapshotsWritten += 1;
+    }
+
+    await succeedIngestionRun(runId, snapshotsWritten, new Date().toISOString());
+    console.log(`wrote ${snapshotsWritten} markets`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    await failIngestionRun(
+      runId,
+      snapshotsWritten,
+      message,
+      new Date().toISOString(),
     );
+    throw error;
   }
 }
 
-run();
+run().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
+});

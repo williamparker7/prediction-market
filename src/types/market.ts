@@ -8,15 +8,25 @@ export interface Event {
 export interface Market {
   id: string;
   eventId: string;
+  conditionId: string;
+  questionId: string;
+  yesTokenId: string;
+  noTokenId: string;
   question: string;
-  groupItemTitle: string | null; // candidate/outcome label ("Gavin Newsom"); null on binary events
-  conditionId: string | null;
+  groupItemTitle: string | null;
   slug: string;
+  description: string | null;
+  resolutionSource: string | null;
+  sourceCreatedAt: string | null;
   startDate: string | null;
   endDate: string | null;
-  negRisk: boolean;              // market-level flag; event.negRisk is authoritative for the set
+  closedAt: string | null;
+  negRisk: boolean;
+  enableOrderBook: boolean;
   active: boolean;
   closed: boolean;
+  yesPayout: number | null;
+  resolvedAt: string | null;
 }
 
 export interface Snapshot {
@@ -28,8 +38,13 @@ export interface Snapshot {
   bestAsk: number | null;
   spread: number | null;
   volume: number | null;
+  volume24h: number | null;
   liquidity: number | null;
-  capturedAt: string;           // one shared value per ingestion run, set by US at fetch time
+}
+
+export interface SnapshotInsert extends Snapshot {
+  runId: number;
+  capturedAt: string;
 }
 
 export interface ParsedMarket {
@@ -38,12 +53,15 @@ export interface ParsedMarket {
   snapshot: Snapshot;
 }
 
+export type IngestionRunStatus = "running" | "succeeded" | "failed";
 
 export interface IngestionRun {
-  id: number;                   // auto-increment, DB-assigned
+  id: number;
+  status: IngestionRunStatus;
+  requestedLimit: number;
   startedAt: string;
   finishedAt: string | null;
   marketsFetched: number;
-  marketsWritten: number;
-  errorCount: number;
+  snapshotsWritten: number;
+  errorMessage: string | null;
 }
