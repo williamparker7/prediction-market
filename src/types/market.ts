@@ -10,8 +10,10 @@ export interface Market {
   eventId: string;
   conditionId: string;
   questionId: string;
-  yesTokenId: string;
-  noTokenId: string;
+  primaryTokenId: string;
+  secondaryTokenId: string;
+  primaryOutcome: string;
+  secondaryOutcome: string;
   question: string;
   groupItemTitle: string | null;
   slug: string;
@@ -25,14 +27,14 @@ export interface Market {
   enableOrderBook: boolean;
   active: boolean;
   closed: boolean;
-  yesPayout: number | null;
+  primaryPayout: number | null;
   resolvedAt: string | null;
 }
 
 export interface Snapshot {
   marketId: string;
-  yesPrice: number | null;
-  noPrice: number | null;
+  primaryPrice: number | null;
+  secondaryPrice: number | null;
   lastTradePrice: number | null;
   bestBid: number | null;
   bestAsk: number | null;

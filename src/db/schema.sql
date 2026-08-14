@@ -17,8 +17,10 @@ CREATE TABLE markets (
   event_id            VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   condition_id        CHAR(66) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   question_id         CHAR(66) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  yes_token_id        VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  no_token_id         VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  primary_token_id    VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  secondary_token_id  VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  primary_outcome     VARCHAR(255) NOT NULL,
+  secondary_outcome   VARCHAR(255) NOT NULL,
   question            VARCHAR(1024) NOT NULL,
   group_item_title    VARCHAR(512) NULL,
   slug                VARCHAR(255) NOT NULL,
@@ -32,19 +34,19 @@ CREATE TABLE markets (
   enable_order_book   BOOLEAN NOT NULL DEFAULT FALSE,
   active              BOOLEAN NOT NULL DEFAULT FALSE,
   closed              BOOLEAN NOT NULL DEFAULT FALSE,
-  yes_payout          DECIMAL(2,1) NULL,
+  primary_payout      DECIMAL(2,1) NULL,
   resolved_at         DATETIME(6) NULL,
 
   PRIMARY KEY (id),
   UNIQUE KEY uq_markets_condition_id (condition_id),
   UNIQUE KEY uq_markets_question_id (question_id),
-  UNIQUE KEY uq_markets_yes_token_id (yes_token_id),
-  UNIQUE KEY uq_markets_no_token_id (no_token_id),
+  UNIQUE KEY uq_markets_primary_token_id (primary_token_id),
+  UNIQUE KEY uq_markets_secondary_token_id (secondary_token_id),
   KEY idx_markets_slug (slug),
   KEY idx_markets_event_id (event_id),
 
-  CONSTRAINT chk_markets_yes_payout
-    CHECK (yes_payout IS NULL OR yes_payout IN (0.0, 0.5, 1.0)),
+  CONSTRAINT chk_markets_primary_payout
+    CHECK (primary_payout IS NULL OR primary_payout IN (0.0, 0.5, 1.0)),
   CONSTRAINT fk_markets_event
     FOREIGN KEY (event_id) REFERENCES events (id)
     ON DELETE RESTRICT
@@ -71,8 +73,8 @@ CREATE TABLE price_snapshots (
   id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   run_id            BIGINT UNSIGNED NOT NULL,
   market_id         VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-  yes_price         DECIMAL(6,4) NULL,
-  no_price          DECIMAL(6,4) NULL,
+  primary_price     DECIMAL(6,4) NULL,
+  secondary_price   DECIMAL(6,4) NULL,
   last_trade_price  DECIMAL(6,4) NULL,
   best_bid          DECIMAL(6,4) NULL,
   best_ask          DECIMAL(6,4) NULL,

@@ -22,8 +22,10 @@ export async function upsertMarket(market: Market): Promise<void> {
        event_id          = ?,
        condition_id      = ?,
        question_id       = ?,
-       yes_token_id      = ?,
-       no_token_id       = ?,
+       primary_token_id   = ?,
+       secondary_token_id = ?,
+       primary_outcome    = ?,
+       secondary_outcome  = ?,
        question          = ?,
        group_item_title  = ?,
        slug              = ?,
@@ -38,18 +40,19 @@ export async function upsertMarket(market: Market): Promise<void> {
        active            = ?,
        closed            = ?
      WHERE id = ?`,
-    [...values.slice(1, 19), market.id],
+    [...values.slice(1, 21), market.id],
   );
 
   if (updateResult.affectedRows > 0 || await marketExists(market.id)) return;
 
   await pool.execute(
     `INSERT INTO markets
-       (id, event_id, condition_id, question_id, yes_token_id, no_token_id,
-        question, group_item_title, slug, description, resolution_source,
+       (id, event_id, condition_id, question_id, primary_token_id,
+        secondary_token_id, primary_outcome, secondary_outcome, question,
+        group_item_title, slug, description, resolution_source,
         source_created_at, start_date, end_date, closed_at, neg_risk,
-        enable_order_book, active, closed, yes_payout, resolved_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        enable_order_book, active, closed, primary_payout, resolved_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     values,
   );
 }
@@ -111,14 +114,14 @@ export async function failIngestionRun(
 export async function insertSnapshot(snapshot: SnapshotInsert): Promise<void> {
   await pool.execute(
     `INSERT INTO price_snapshots
-       (run_id, market_id, yes_price, no_price, last_trade_price,
+       (run_id, market_id, primary_price, secondary_price, last_trade_price,
         best_bid, best_ask, spread, volume, volume_24h, liquidity, captured_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       snapshot.runId,
       snapshot.marketId,
-      snapshot.yesPrice,
-      snapshot.noPrice,
+      snapshot.primaryPrice,
+      snapshot.secondaryPrice,
       snapshot.lastTradePrice,
       snapshot.bestBid,
       snapshot.bestAsk,
@@ -131,14 +134,46 @@ export async function insertSnapshot(snapshot: SnapshotInsert): Promise<void> {
   );
 }
 
+export async function setMarketPrimaryPayout(
+  marketId: string,
+  primaryPayout: 0 | 0.5 | 1,
+): Promise<void> {
+  const [result] = await pool.execute<ResultSetHeader>(
+    `UPDATE markets
+     SET primary_payout = ?
+     WHERE id = ? AND (primary_payout IS NULL OR primary_payout = ?)`,
+    [primaryPayout, marketId, primaryPayout],
+  );
+  if (result.affectedRows > 0) return;
+
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT primary_payout FROM markets WHERE id = ? LIMIT 1`,
+    [marketId],
+  );
+  const row = rows[0];
+  if (row === undefined) {
+    throw new Error(`Market ${marketId} does not exist`);
+  }
+
+  const storedPayout = Number(row.primary_payout);
+  if (storedPayout !== primaryPayout) {
+    throw new Error(
+      `Market ${marketId} payout conflict: stored=${String(row.primary_payout)} ` +
+      `incoming=${primaryPayout}`,
+    );
+  }
+}
+
 function marketValues(market: Market): Array<string | number | boolean | null> {
   return [
     market.id,
     market.eventId,
     market.conditionId,
     market.questionId,
-    market.yesTokenId,
-    market.noTokenId,
+    market.primaryTokenId,
+    market.secondaryTokenId,
+    market.primaryOutcome,
+    market.secondaryOutcome,
     market.question,
     market.groupItemTitle,
     market.slug,
@@ -152,7 +187,7 @@ function marketValues(market: Market): Array<string | number | boolean | null> {
     market.enableOrderBook,
     market.active,
     market.closed,
-    market.yesPayout,
+    market.primaryPayout,
     toMysqlDateTime(market.resolvedAt),
   ];
 }
@@ -169,5 +204,5 @@ async function marketExists(marketId: string): Promise<boolean> {
 // stores no timezone, so remove the UTC marker but retain fractional seconds.
 function toMysqlDateTime(iso: string | null): string | null {
   if (!iso) return null;
-  return iso.replace("T", " ").replace(/Z$/, "");
+  return iso.replace("T", " ").replace(/(?:Z|\+00(?::?00)?)$/, "");
 }

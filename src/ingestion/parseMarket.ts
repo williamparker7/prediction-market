@@ -21,6 +21,7 @@ export function parseMarket(raw: RawMarket): ParsedMarket {
   };
 
   const tokenIds = parseRequiredPair(raw.clobTokenIds, marketId, "clobTokenIds");
+  const outcomes = parseRequiredPair(raw.outcomes, marketId, "outcomes");
   const prices = parseOptionalPair(raw.outcomePrices);
 
   const market: Market = {
@@ -28,8 +29,10 @@ export function parseMarket(raw: RawMarket): ParsedMarket {
     eventId: event.id,
     conditionId: requiredString(raw.conditionId, `market ${marketId} conditionId`),
     questionId: requiredString(raw.questionID, `market ${marketId} questionID`),
-    yesTokenId: tokenIds[0],
-    noTokenId: tokenIds[1],
+    primaryTokenId: tokenIds[0],
+    secondaryTokenId: tokenIds[1],
+    primaryOutcome: outcomes[0],
+    secondaryOutcome: outcomes[1],
     question: requiredString(raw.question, `market ${marketId} question`),
     groupItemTitle: optionalString(raw.groupItemTitle),
     slug: requiredString(raw.slug, `market ${marketId} slug`),
@@ -46,14 +49,14 @@ export function parseMarket(raw: RawMarket): ParsedMarket {
     ),
     active: requiredBoolean(raw.active, `market ${marketId} active`),
     closed: requiredBoolean(raw.closed, `market ${marketId} closed`),
-    yesPayout: null,
+    primaryPayout: null,
     resolvedAt: null,
   };
 
   const snapshot: Snapshot = {
     marketId,
-    yesPrice: prices === null ? null : toNumOrNull(prices[0]),
-    noPrice: prices === null ? null : toNumOrNull(prices[1]),
+    primaryPrice: prices === null ? null : toNumOrNull(prices[0]),
+    secondaryPrice: prices === null ? null : toNumOrNull(prices[1]),
     lastTradePrice: toNumOrNull(raw.lastTradePrice),
     bestBid: toNumOrNull(raw.bestBid),
     bestAsk: toNumOrNull(raw.bestAsk),
@@ -105,7 +108,7 @@ function parseRequiredPair(
     values.length !== 2 ||
     values.some((item) => typeof item !== "string" || item.length === 0)
   ) {
-    throw new Error(`Market ${marketId} ${field} must contain exactly two IDs`);
+    throw new Error(`Market ${marketId} ${field} must contain exactly two values`);
   }
   return [values[0] as string, values[1] as string];
 }

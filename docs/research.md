@@ -5,8 +5,8 @@
 Prediction-market price is the baseline probability estimate.
 
 ```text
-YES price = 0.63
-→ baseline P(event) = 0.63
+Primary-outcome price = 0.63
+→ baseline P(primary outcome) = 0.63
 ```
 
 Any future model must beat or add value relative to that baseline.
@@ -19,7 +19,7 @@ Primary question:
 
 Example output:
 
-| Price bucket | N | Actual YES frequency |
+| Price bucket | N | Actual primary-outcome frequency |
 | --- | ---: | ---: |
 
 Future slices may include:

@@ -53,13 +53,17 @@ Events store the Polymarket event `id`, `title`, `slug`, and `neg_risk`. The Pol
 
 ### Markets
 
-Markets preserve the identities needed to join Gamma, CTF, and CLOB data: Gamma market `id`, `event_id`, CTF `condition_id`, Polymarket `question_id`, and the YES and NO CLOB token IDs. They also store `question`, `group_item_title`, `slug`, `description`, `resolution_source`, source-supplied creation/start/end/closed timestamps, `neg_risk`, `enable_order_book`, `active`, and `closed`.
+Markets preserve the identities needed to join Gamma, CTF, and CLOB data: Gamma market `id`, `event_id`, CTF `condition_id`, Polymarket `question_id`, and the primary and secondary CLOB token IDs. The corresponding outcome labels are stored because binary markets can use labels such as Yes/No, Over/Under, or participant names. Markets also store `question`, `group_item_title`, `slug`, `description`, `resolution_source`, source-supplied creation/start/end/closed timestamps, `neg_risk`, `enable_order_book`, `active`, and `closed`.
 
-`yes_payout` is nullable ground truth: `NULL` means unresolved or unknown, `1.0` means YES, `0.0` means NO, and `0.5` means a documented 50/50 resolution. `resolved_at` is separately nullable and is never inferred from `end_date`. Populating resolution data is a future milestone.
+`primary_payout` is nullable ground truth: `NULL` means unresolved or unknown, `1.0` means the primary outcome won, `0.0` means the secondary outcome won, and `0.5` means an explicit CLOB 50/50 resolution. Ground truth is populated only when CLOB reports the market closed and either identifies exactly one matching winner token or explicitly marks a 50/50 outcome. `resolved_at` is separately nullable and is never inferred from `end_date` or `closed_at`.
 
 ### Price snapshots
 
-Each snapshot stores its ingestion `run_id`, `market_id`, YES/NO prices, last trade price, best bid/ask, spread, cumulative volume, 24-hour volume, liquidity, and `captured_at`. A market can have many snapshots across runs but only one per run, enforced by `UNIQUE(run_id, market_id)`. Foreign keys preserve run and market provenance, while indexes support market-time and capture-time queries.
+Each snapshot stores its ingestion `run_id`, `market_id`, primary/secondary prices, last trade price, best bid/ask, spread, cumulative volume, 24-hour volume, liquidity, and `captured_at`. A market can have many snapshots across runs but only one per run, enforced by `UNIQUE(run_id, market_id)`. Foreign keys preserve run and market provenance, while indexes support market-time and capture-time queries.
+
+### Resolution synchronization
+
+Resolution synchronization reads one bounded Gamma closed-event keyset page, follows each inspected market's `condition_id` to the public CLOB market representation, and stores only explicit ground truth. Lagging or ambiguous CLOB markets remain unresolved. The command does not paginate, retry, schedule itself, or infer a resolution timestamp.
 
 ### Ingestion runs
 
@@ -90,4 +94,4 @@ All timestamps represent UTC, although MySQL `DATETIME` has no timezone metadata
 
 ## Next architecture milestone
 
-After validating the durable V0 ingestion model, the next architecture milestone is resolution and historical data collection for calibration analysis.
+With explicit outcome semantics and bounded resolution synchronization in place, the next architecture milestone is the raw historical-price and import-provenance model.

@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1",
     "explore": "tsx --env-file=.env src/scripts/polymarketAPITest.ts",
-    "ingest": "tsx --env-file=.env src/ingestion/ingest.ts"
+    "ingest": "tsx --env-file=.env src/ingestion/ingest.ts",
+    "sync-resolutions": "tsx --env-file=.env src/resolution/syncResolvedMarkets.ts"
   },
   "keywords": [],
   "author": "",
