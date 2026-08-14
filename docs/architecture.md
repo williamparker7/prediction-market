@@ -91,7 +91,10 @@ All timestamps represent UTC, although MySQL `DATETIME` has no timezone metadata
 - Use database constraints to enforce real invariants.
 - Do not store API fields merely because they exist.
 - Add fields when needed for identification, provenance, lifecycle or ground truth, or near-term analysis.
+- Keep one generic Polymarket data model. Every legitimate contract remains a distinct market under its stable external identity, including highly repetitive short-duration contracts.
+- Treat market families as research classifications, cohorts, and filters over the shared data model—not as separate databases or category-specific services.
+- Remain a modular monolith unless a runtime or operational need creates a real boundary. Possible future boundaries include an always-on realtime collector, batch research jobs, a user-facing API, or an alert worker.
 
 ## Next architecture milestone
 
-With explicit outcome semantics and bounded resolution synchronization in place, the next architecture milestone is the raw historical-price and import-provenance model.
+With explicit outcome semantics and bounded resolution synchronization in place, the current architecture milestone is V0.2: define the raw historical primary-token price observation and import-provenance model. Exact schema decisions remain pending.

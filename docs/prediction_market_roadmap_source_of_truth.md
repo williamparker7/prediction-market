@@ -3,7 +3,7 @@
 
 **Owner:** Will  
 **Status:** Active  
-**Last updated:** 2026-08-13  
+**Last updated:** 2026-08-14
 **Primary repo:** `~/Developer/prediction-market`
 
 ---
@@ -491,7 +491,7 @@ Pagination becomes justified when needed for systematic market coverage.
 
 ## V0 Goal
 
-> **A reproducible TypeScript system that ingests live and historical Polymarket data into MySQL, reconstructs resolved-market probability observations without look-ahead leakage, and produces a statistically defensible calibration analysis of market-implied probabilities.**
+> **A reproducible TypeScript system that ingests live and historical Polymarket data into MySQL, reconstructs resolved-market probability observations without look-ahead leakage, and produces a statistically defensible calibration analysis for one coherent, explicitly reported market cohort.**
 
 V0 does **not** require:
 
@@ -541,11 +541,13 @@ Must establish:
 
 ---
 
-## V0.2 — Finalize Historical Data Model
+## V0.2 — Historical Data Model
 
 Only after V0.1.
 
-Likely raw historical-price shape may be close to:
+Define raw historical primary-token price observations and import provenance.
+
+Likely observation concept:
 
 ```text
 market_id
@@ -553,7 +555,24 @@ observed_at
 primary_price
 ```
 
-But the API exploration must determine whether source/import/fidelity/provenance fields are needed.
+Likely import provenance concept:
+
+```text
+market_id
+token_id
+source
+interval
+fidelity
+requested_start
+requested_end
+imported_at
+status
+points_returned
+points_inserted
+error_message
+```
+
+Exact schema decisions remain pending.
 
 Principle:
 
@@ -561,28 +580,9 @@ Principle:
 
 ---
 
-## V0.3 — Continuous Local Live Collection
+## V0.3 — Small Bounded Historical Importer
 
-Add a simple scheduler for forward collection.
-
-Before doing so:
-
-- define the intended active-market universe
-- add pagination if needed
-- choose a reasonable snapshot cadence
-- prevent overlapping runs
-- retain one-run ingestion semantics
-- document scheduler behavior
-
-Do not introduce Kafka, Redis, Airflow, Kubernetes, workers, or cloud infrastructure.
-
-Local collection does not need perfect uptime yet because missing historical prices can often be backfilled; the main unique value is richer live state.
-
----
-
-## V0.4 — Historical Importer
-
-Implement a reproducible pipeline:
+Implement and verify the complete historical-price storage path on a small controlled set of explicitly resolved markets:
 
 ```text
 discover resolved markets
@@ -596,21 +596,72 @@ retrieve historical primary-outcome prices
 persist normalized historical observations
 ```
 
-Success means a meaningful resolved-market sample can be imported reproducibly.
+Requirements:
 
-Do not define success as “download all of Polymarket.”
+- bounded sample
+- primary-token history
+- idempotent re-runs
+- no duplicate logical observations
+- preserved source timestamps
+- import provenance
+- no attempt to import all of Polymarket yet
 
 ---
 
-## V0.5 — Calibration Observation Methodology
+## V0.4 — Profile Historical Market Universe
+
+Before scaling the importer, inspect and measure:
+
+- number of resolved markets
+- market-duration distribution
+- categories where available
+- recurring-market-family concentration
+- underlying or topic concentration where identifiable
+- eligibility counts for candidate calibration horizons
+
+Thousands of separate short-duration recurring markets are legitimate database records, but they may create statistical concentration. This is a research-sampling issue, not a database-deduplication issue.
+
+Do not introduce weighting or complex statistical corrections yet. Measure the population first.
+
+---
+
+## V0.5 — Lock One V0 Calibration Cohort
+
+Choose one statistically coherent first cohort from the universe profile before examining calibration results. It should ideally have:
+
+- enough resolved markets
+- clear binary ground truth
+- adequate historical price coverage
+- a meaningful common observation horizon
+- reasonably comparable market durations and mechanics
+- no accidental domination by one repetitive family unless that family is intentionally being studied
+
+Do not preselect politics, sports, crypto, or another category solely by intuition. Implement the cohort as an analysis classification or filter over generic market data, not as a separate schema or service.
+
+---
+
+## V0.6 — Continuous Local Live Collection
+
+Continuous collection is useful parallel work, but it must not block the calibration V0. Its main purpose is richer forward-collected state such as bid, ask, spread, liquidity, volume, and 24-hour volume.
+
+Before scheduling it:
+
+- define the intended active-market universe
+- add pagination if needed
+- choose a reasonable snapshot cadence
+- prevent overlapping runs
+- retain one-run ingestion semantics
+- document scheduler behavior
+
+Do not introduce Kafka, Redis, Airflow, Kubernetes, workers, or cloud infrastructure.
+
+---
+
+## V0.7 — Calibration Observation Methodology
 
 Do **not** treat every historical price observation as an independent prediction.
 
-Primary first methodology:
-
-> **Fixed time-to-resolution horizons.**
-
-Initial candidate horizons:
+Use at most one observation per market per chosen evaluation horizon. Candidate horizons may include:
 
 ```text
 30 days before resolution
@@ -618,9 +669,7 @@ Initial candidate horizons:
 1 day before resolution
 ```
 
-where source data permits.
-
-One market contributes at most one observation per horizon.
+The final horizon must fit the locked cohort and use a defensible leakage-safe time anchor. Do not mix ultra-short recurring contracts into a longer-horizon experiment when they require a fundamentally different methodology.
 
 Why:
 
@@ -633,9 +682,9 @@ Dense historical time series remain useful for later time-series research; they 
 
 ---
 
-## V0.6 — First Calibration Analysis
+## V0.8 — First Calibration Analysis
 
-Produce:
+Run the first report only on the locked V0 cohort. Produce:
 
 ```text
 Probability bucket
@@ -661,6 +710,7 @@ Potential first dimensions:
 - probability bucket
 
 Do not immediately slice into dozens of subgroups.
+Report cohort composition clearly, and do not present the result as “all of Polymarket” unless the sample genuinely supports that claim.
 
 ---
 
@@ -673,7 +723,11 @@ historical import
         ↓
 resolved historical dataset
         ↓
-fixed-horizon observation construction
+profiled historical universe
+        ↓
+locked coherent cohort
+        ↓
+cohort-appropriate observation construction
         ↓
 calibration analysis
         ↓
@@ -686,6 +740,7 @@ with:
 - explicit outcome ground truth
 - no look-ahead leakage
 - documented methodology
+- clearly reported cohort composition
 - reproducible database setup
 - reproducible commands
 - measured results rather than invented claims
@@ -766,7 +821,13 @@ V1 introduces the first user-facing product.
 
 # 16. V1 Roadmap
 
-## V1.1 — Signal Research Framework
+## V1.1 — Expand Research Cohorts
+
+Use the same generic infrastructure to add further coherent cohorts and compare how calibration and market behavior differ across them. Do this before inventing category-specific systems.
+
+---
+
+## V1.2 — Signal Research Framework
 
 Create a simple common research interface:
 
@@ -796,7 +857,7 @@ Do not research dozens of indicators simultaneously.
 
 ---
 
-## V1.2 — Signal Promotion Standard
+## V1.3 — Signal Promotion Standard
 
 A finding becomes a product signal only after:
 
@@ -822,7 +883,7 @@ Interesting backtests are not automatically real edge.
 
 ---
 
-## V1.3 — User-Facing Application
+## V1.4 — User-Facing Application
 
 This is when frontend work becomes justified.
 
@@ -1130,6 +1191,8 @@ Current philosophy:
 
 > Prefer the simplest understandable architecture that solves the current milestone.
 
+The project remains a modular monolith. Politics, sports, crypto, and other market categories are classifications over one generic platform; they are not service or database boundaries. All legitimate contracts remain distinct records under their stable external identities, including repetitive families such as five-minute crypto markets.
+
 Do not introduce without concrete need:
 
 - Redis
@@ -1165,6 +1228,8 @@ GraphQL
 queue / worker
 → jobs become too expensive or unreliable to execute inline
 ```
+
+Possible future runtime boundaries include an always-on realtime collector, batch research jobs, a user-facing API, or an alert worker. A market category by itself is not such a boundary.
 
 ---
 
@@ -1202,50 +1267,26 @@ This is a direction, not an instruction to build every layer now.
 # 25. Immediate Roadmap From Today
 
 ```text
-✅ DEVELOPMENT ENVIRONMENT
-Clean reproducible local workflow
+✅ Development environment
+✅ Durable live ingestion
+✅ Historical API reconnaissance
+✅ Generic binary outcome model
+✅ Trustworthy resolution sync
 
-✅ DURABLE LIVE INGESTION
-Gamma → TypeScript → MySQL
-events / markets / snapshots / runs
+▶ V0.2 Historical data model
+□ V0.3 Small bounded historical importer
+□ V0.4 Profile historical market universe
+□ V0.5 Lock one coherent V0 calibration cohort
+□ V0.6 Continuous local collection
+□ V0.7 Observation methodology
+□ V0.8 Calibration analysis
 
-✅ V0.1 — HISTORICAL API RECONNAISSANCE
-Validate resolved-market and historical-price path
+──────── Resume-worthy V0 ────────
 
-✅ TRUSTWORTHY RESOLUTION SYNC
-Neutral binary outcomes + explicit CLOB ground truth
-
-▶ V0.2 — HISTORICAL DATA MODEL
-Finalize raw historical schema
-
-□ V0.3 — CONTINUOUS LOCAL COLLECTION
-Systematic active-market coverage
-External scheduler
-No overlapping runs
-
-□ V0.4 — HISTORICAL IMPORTER
-Resolved markets + outcomes + primary-outcome history
-
-□ V0.5 — OBSERVATION METHODOLOGY
-Fixed time-to-resolution horizons
-
-□ V0.6 — CALIBRATION ANALYSIS
-Reliability + Brier + uncertainty
-
-──────────── RESUME-WORTHY V0 ────────────
-
-□ V1.1 — SIGNAL RESEARCH FRAMEWORK
-Test limited evidence-based hypotheses
-
-□ V1.2 — EXECUTION-AWARE VALIDATION
-Holdout + spread + fees + liquidity + shadow test
-
-□ V1.3 — PRODUCT UI
-Edge scanner
-Market detail
-Research
-Watchlists / alerts
-Paper portfolio
+□ Expand research cohorts
+□ Signal research
+□ Execution-aware validation
+□ Product / Edge Scanner
 
 ──────────── FIRST REAL USERS ────────────
 
@@ -1290,18 +1331,20 @@ If a proposed feature does not clearly help the current milestone, defer it.
 
 The current milestone is:
 
-## V0.2 — Finalize Historical Data Model
+## V0.2 — Historical Data Model
 
 Immediate sequence:
 
 ```text
 trustworthy explicit resolution ground truth
         ↓
-finalize raw historical price and import-provenance model
+define raw historical price and import-provenance model
         ↓
-design statistically defensible calibration observations
+implement a small bounded historical importer
         ↓
-give Codex one cohesive implementation milestone
+profile the historical market universe
+        ↓
+lock one coherent calibration cohort
 ```
 
 Historical API reconnaissance established:
@@ -1312,7 +1355,7 @@ Historical API reconnaissance established:
 - price-history response shape and Unix-second timestamps
 - fidelity and import-provenance requirements
 
-The next implementation should add only the raw historical observation and import-provenance model needed for a bounded importer.
+The next implementation should add only the raw historical observation and import-provenance model needed for a bounded importer. Exact schema decisions remain pending.
 
 Do not begin frontend work or ML before this is complete.
 
@@ -1335,6 +1378,9 @@ Do not begin frontend work or ML before this is complete.
 13. **Do not move the V0 finish line.**
 14. **Use current official API documentation whenever behavior may have changed.**
 15. **Re-verify regulatory / exchange-program details before real execution or monetization decisions.**
+16. **Build one generic platform, but prove the first complete calibration pipeline on one statistically coherent cohort.**
+17. **Treat repetitive-market concentration as a sampling question, not a database identity problem.**
+18. **Use market cohorts as research classifications and filters, not category-specific services.**
 
 ---
 

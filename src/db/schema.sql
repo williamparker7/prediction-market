@@ -69,6 +69,53 @@ CREATE TABLE ingestion_runs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
+CREATE TABLE historical_prices (
+  market_id      VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  observed_at    DATETIME(6) NOT NULL,
+  primary_price  DECIMAL(7,6) NOT NULL,
+
+  PRIMARY KEY (market_id, observed_at),
+  CONSTRAINT chk_historical_prices_primary_price
+    CHECK (primary_price >= 0 AND primary_price <= 1),
+  CONSTRAINT fk_historical_prices_market
+    FOREIGN KEY (market_id) REFERENCES markets (id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE historical_price_imports (
+  id                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  market_id           VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  token_id            VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `interval`          VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  fidelity_minutes    INT UNSIGNED NOT NULL,
+  requested_start_at  DATETIME(6) NULL,
+  requested_end_at    DATETIME(6) NULL,
+  started_at          DATETIME(6) NOT NULL,
+  completed_at        DATETIME(6) NULL,
+  status              ENUM('running', 'succeeded', 'failed') NOT NULL,
+  points_returned     INT UNSIGNED NULL,
+  points_inserted     INT UNSIGNED NULL,
+  error_message       TEXT NULL,
+
+  PRIMARY KEY (id),
+  KEY idx_historical_price_imports_market_started (market_id, started_at),
+  CONSTRAINT chk_historical_price_imports_fidelity
+    CHECK (fidelity_minutes > 0),
+  CONSTRAINT chk_historical_price_imports_counts
+    CHECK (
+      points_returned IS NULL
+      OR points_inserted IS NULL
+      OR points_inserted <= points_returned
+    ),
+  CONSTRAINT fk_historical_price_imports_market
+    FOREIGN KEY (market_id) REFERENCES markets (id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
 CREATE TABLE price_snapshots (
   id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   run_id            BIGINT UNSIGNED NOT NULL,
